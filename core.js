@@ -325,10 +325,10 @@ function main(config) {
             authorMess.push(`\n ✾✾✾✾✾✾✾✾ 👉${groupName}👈 ✾✾✾✾✾✾✾✾`);
             commits.forEach((commit, index) => {
                 // authorMess.push('--------------------------------------------------------');
-                authorMess.push(`👉 CommitID: [${commit.shortSha}]  ⏰ createdAt: [${commit.dateTime}]`)
-                authorMess.push(`👳 Author: ${commit.author}`);
+                authorMess.push(`👉 CommitID: [${commit.shortSha}]`)
+                authorMess.push(`👳 Author: ${commit.author} - ⏰ (${commit.dateTime})`) ;
                 authorMess.push('✍️  Changelogs:');
-                commit.messages.forEach((item) => {
+                commit.messages.forEach((item, index) => {
                     authorMess.push(`    ✔️  ${item.trim().startsWith('-') ? item.replace('-', '').trim() : `${item}`}`);
                 });
                 authorMess.push('--------------------------------------------------------');
