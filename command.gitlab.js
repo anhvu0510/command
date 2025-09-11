@@ -1,6 +1,6 @@
 const moment = require('moment');
 const { gitToken, host, projects } = require('./config')
-const { core } = require('./auto-sbx')
+const { core } = require('./core')
 
 
 function parseArgs(arr) {
@@ -52,14 +52,14 @@ function parseArgs(arr) {
             DO_TAG: 'true',
         }
 
-        const { ensureTargetIsMain, mergeIntoMain, syncMainToDeployAndTag, getChanges, getChangeLogsMessage, createTagsForDeploy } = core(config)
+        const commandHandler = core(config)
 
         const diffs = command['--diff'] ?? [];
         if (diffs.length !== 0) {
             for (const [source, destination] of diffs) {
                 try {
-                    const result = await getChanges(source, destination);
-                    const changeMessage = getChangeLogsMessage('date', result.commitChanges)
+                    const result = await commandHandler.getChanges(source, destination);
+                    const changeMessage = commandHandler.getChangeLogsMessage('date', result.commitChanges)
                     console.log(changeMessage)
                 } catch (error) {
                     console.error(error);
@@ -74,8 +74,8 @@ function parseArgs(arr) {
             for (const mergeId of mrIds) {
                 try {
                     console.log(`🔧[Merge to ${config.MAIN_BRANCH}] Host=${config.HOST} PID=${config.PID} Merge RequestID: ${mergeId}`);
-                    await ensureTargetIsMain(mergeId);
-                    await mergeIntoMain(mergeId);
+                    await commandHandler.ensureTargetIsMain(mergeId);
+                    await commandHandler.mergeIntoMain(mergeId);
                 } catch (error) {
                     console.error(error);
 
@@ -89,14 +89,14 @@ function parseArgs(arr) {
             const result = await getChanges(config.MAIN_BRANCH, config.DEPLOY_BRANCH);
             if (result.commitChanges.length !== 0) {
                 const tagBuildSbx = command['--tags']?.shift() ?? null;
-                const changeLogs = getChangeLogsMessage('date', result.commitChanges)
+                const changeLogs = commandHandler.getChangeLogsMessage('date', result.commitChanges)
                 let tagsDesc = command['--tags-desc'] ?? null;
                 if(!tagsDesc) {
                     tagsDesc = changeLogs
                 } else {
                     tagsDesc = `Build SBX at: ${moment().format('DD/MM/YYYY HH:mm')}\nChangelogs:\n${tagsDesc.map(item => ` - ${item.trim()}`).join('\n')}`
                 }
-                await syncMainToDeployAndTag(tagBuildSbx, changeLogs);
+                await commandHandler.syncMainToDeployAndTag(tagBuildSbx, changeLogs);
             } else {
                 console.log(`[Error]: Not have commits changes from ${config.MAIN_BRANCH} to ${config.DEPLOY_BRANCH}`)
             }
@@ -104,10 +104,10 @@ function parseArgs(arr) {
 
         if (command['--build-tags']) {
             const destination = command['--build-tags'][0]
-            const result = await getChanges(config.DEPLOY_BRANCH, destination);
+            const result = await commandHandler.getChanges(config.DEPLOY_BRANCH, destination);
             if (result.commitChanges.length !== 0) {
                 const tagBuildSbx = command['--tags']?.shift() ?? null;
-                const changeLogs = getChangeLogsMessage('date', result.commitChanges)
+                const changeLogs = commandHandler.getChangeLogsMessage('date', result.commitChanges)
                 let tagsDesc = command['--tags-desc'] ?? null;
                 if(!tagsDesc) {
                     tagsDesc = changeLogs
@@ -117,7 +117,7 @@ function parseArgs(arr) {
 
                 
 
-                await createTagsForDeploy(null, tagsDesc)
+                await commandHandler.createTagsForDeploy(null, tagsDesc)
                 // await syncMainToDeployAndTag(tagBuildSbx, changeLogs);
             } else {
                 console.log(`[Error]: Not have commits changes from ${config.MAIN_BRANCH} to ${config.DEPLOY_BRANCH}`)

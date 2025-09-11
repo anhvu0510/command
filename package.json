@@ -1,9 +1,10 @@
 {
-  "name": "auto-sbx",
+  "name": "command",
   "version": "1.0.0",
   "description": "",
   "main": "auto-sbx.js",
   "scripts": {
+    "gitlab": "node command.gitlab.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
