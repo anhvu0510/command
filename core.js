@@ -385,13 +385,13 @@ function main(config) {
 
     function getChangeLogsMessage(groupBy, commitChanges = [], markdown = true) {
 
-        if(!groupBy) {
+        if(!groupBy || groupBy === 'none') {
             return commitChanges.map(commit => 
                 {
                     let mess = `✍️ [${commit.shortSha}] 👳 ${commit.author} - ⏰ (${commit.dateTime})\n`
                     commit.messages.forEach((item, index) => {
-                        mess += `   ✔️ ${item.trim().startsWith('-') ? item.replace('-', '').trim() : `${item}`}\n`;
-
+                        mess += `   ✔️  ${item.trim().startsWith('-') ? item.replace('-', '').trim() : `${item}`}\n`;
+                        
                     });
                     // mess += '________________________________________\n'
                     return mess

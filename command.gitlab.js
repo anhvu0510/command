@@ -60,10 +60,11 @@ function parseArgs(arr) {
 
 
         if (diffs.length !== 0) {
-            for (const [source, destination] of diffs) {
+            for (const [source, destination, group] of diffs) {
                 try {
+                    const groupBy = group ?? 'date';
                     const result = await commandHandler.getChanges(source, destination);
-                    const changeMessage = commandHandler.getChangeLogsMessage('date', result.commitChanges)
+                    const changeMessage = commandHandler.getChangeLogsMessage(groupBy, result.commitChanges)
                     console.log(changeMessage)
                 } catch (error) {
                     console.error(error);
