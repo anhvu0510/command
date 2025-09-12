@@ -31,7 +31,7 @@ function parseArgs(arr) {
     try {
 
         const userInput = process.argv.slice(2);
-        const projectName = userInput.shift();
+        const projectName = userInput.pop();
         const projectConfig = projects.find(item => projectName === item.projectName)
         if (!projectConfig) {
             throw new Error(`Project ${projectName} chưa được config`)
@@ -55,6 +55,10 @@ function parseArgs(arr) {
         const commandHandler = core(config)
 
         const diffs = command['--diff'] ?? [];
+        const mergeCR = command['--merge-create'] ?? [];
+        const mrIds = command['--merge'] ?? []
+
+
         if (diffs.length !== 0) {
             for (const [source, destination] of diffs) {
                 try {
@@ -69,8 +73,7 @@ function parseArgs(arr) {
         }
 
 
-        const mergeCR = command['--merge-create'] ?? [];
-        if (mergeCR.length !== 0) {
+        if (command['--merge-create'] && mergeCR.length !== 0) {
             for (const [source, destination] of mergeCR) {
                 try {
                     const result = await commandHandler.getChanges(source, destination);
@@ -81,6 +84,7 @@ function parseArgs(arr) {
                     console.log(`Create MR from ${source} to ${destination} with changelogs::: \n${changeLogs}`);
                     const createMR = await commandHandler.createMR(source, destination, changeLogs, false)
                     console.log('MR IID', createMR);
+                    mrIds.push(createMR)
                 } catch (error) {
                     console.error(error);
 
@@ -89,8 +93,7 @@ function parseArgs(arr) {
         }
 
 
-        const mrIds = command['--merge'] ?? []
-        if (mrIds.length !== 0) {
+        if ( command['--merge'] && mrIds.length !== 0) {
             for (const mergeId of mrIds) {
                 try {
                     console.log(`🔧[Merge to ${config.MAIN_BRANCH}] Host=${config.HOST} PID=${config.PID} Merge RequestID: ${mergeId}`);
