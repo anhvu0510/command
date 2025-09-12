@@ -83,7 +83,8 @@ function parseArgs(arr) {
 
                     const changeLogs = commandHandler.getMarkdownChangelog(result.commitChanges)
                     console.log(`Create MR from ${source} to ${destination} with changelogs::: \n${changeLogs}`);
-                    const createMR = await commandHandler.createMR(source, destination, changeLogs, false)
+                    const title = `Merge branch ${source} into ${destination}: `
+                    const createMR = await commandHandler.createMR(source, destination,changeLogs, title , false)
                     console.log('MR IID', createMR);
                     mrIds.push(createMR)
                 } catch (error) {
