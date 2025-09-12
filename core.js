@@ -66,12 +66,24 @@ function main(config) {
     // ===== GitLab API wrappers =====
     const getMR = (iid) => http('get', `merge_requests/${iid}`);
     const updateMR = (iid, payload) => http('put', `merge_requests/${iid}`, { json: payload });
-    const mergeMR = (iid, { whenPipelineSucceeds = false } = {}) => http('post', `merge_requests/${iid}/merge`, {
-        json: { merge_when_pipeline_succeeds: !!whenPipelineSucceeds, should_remove_source_branch: false },
+    const mergeMR = (iid, { whenPipelineSucceeds = false, merge_commit_message } = {}) => http('post', `merge_requests/${iid}/merge`, {
+        json: { 
+            merge_when_pipeline_succeeds: !!whenPipelineSucceeds, 
+            should_remove_source_branch: false ,
+            merge_commit_message
+        },
         headers: { 'X-HTTP-Method-Override': 'PUT' } // né proxy chặn PUT
     });
 
-    const createMR = (src, dst) => http('post', 'merge_requests', { json: { source_branch: src, target_branch: dst, title: `Sync ${src} into ${dst}` } });
+    const createMRByAPI = (src, dst, changelogs, title, autoMerge) => http('post', 'merge_requests', {
+        json: {
+            source_branch: src,
+            target_branch: dst,
+            title: title ?? `Sync ${src} into ${dst}`,
+            description: changelogs,
+            merge_when_pipeline_succeeds: !!autoMerge
+        }
+    });
 
     const listOpenedMRByBranches = (src, dst) => http('get', `merge_requests?state=opened&source_branch=${encodeURIComponent(src)}&target_branch=${encodeURIComponent(dst)}`);
 
@@ -169,11 +181,11 @@ function main(config) {
         console.log(`✅ Merge accepted (status=${merged.status}) state=${merged.data?.state}`);
     }
 
-    async function syncMainToDeployAndTag(tagSBX, buildMessage = '') {
-        // Create MR MAIN_BRANCH -> DEPLOY_BRANCH (or reuse)
+
+    async function createMR(fromBranch, toBranch, changLogs, title, autoMerge) {
         let mrIID;
         try {
-            const cr = await createMR(MAIN_BRANCH, DEPLOY_BRANCH);
+            const cr = await createMRByAPI(fromBranch, toBranch, changLogs, title, autoMerge);
             if (cr.status === 201 && cr.data?.iid) {
                 mrIID = cr.data.iid;
                 console.log(`✅ Created deploy MR: !${mrIID}`);
@@ -181,7 +193,7 @@ function main(config) {
         } catch (_) { /* ignore, fallback to reuse */ }
 
         if (!mrIID) {
-            const opened = await listOpenedMRByBranches(MAIN_BRANCH, DEPLOY_BRANCH);
+            const opened = await listOpenedMRByBranches(fromBranch, toBranch);
             if (opened.status !== 200 || !Array.isArray(opened.data) || opened.data.length === 0) {
                 throw new Error(`No opened MR from ${MAIN_BRANCH} -> ${DEPLOY_BRANCH}; create failed and reuse not found.`);
             }
@@ -189,10 +201,24 @@ function main(config) {
             console.log(`ℹ️  Reuse deploy MR: !${mrIID}`);
         }
 
+        if (!mrIID) {
+            throw Error(`Create MR from ${fromBranch} to ${toBranch} failed`)
+        }
+
+        return mrIID
+    }
+
+    
+    async function syncMainToDeployAndTag({ tag, tagsDesc, changelogs }) {
+        // Create MR MAIN_BRANCH -> DEPLOY_BRANCH (or reuse)
+        const title = `Changelogs SBX - ${moment(new Date()).format('DD/MM/YYYY HH:mm:ss')}`
+        const mrIID = await createMR(MAIN_BRANCH, DEPLOY_BRANCH, changelogs, title)
+
         const status = await pollMergeable(mrIID, RETRIES, DELAY);
         const queueWhenCI = (status === 'ci_must_pass');
         console.log(`🔀 Merge deploy MR !${mrIID} (queueWhenCI=${queueWhenCI})`);
-        const merged = await mergeMR(mrIID, { whenPipelineSucceeds: queueWhenCI });
+        const mergeMess = `${title}\n ${tagsDesc}`
+        const merged = await mergeMR(mrIID, { whenPipelineSucceeds: queueWhenCI, merge_commit_message: mergeMess });
         if (![200, 201, 202].includes(merged.status)) {
             throw new Error(`Deploy merge failed (${merged.status}): ${JSON.stringify(merged.data)}`);
         }
@@ -202,12 +228,12 @@ function main(config) {
             console.log('🏷️  Skip tagging (DO_TAG=false).');
             return;
         }
-        await createTagsForDeploy(tagSBX, buildMessage)
+        await createTagsForDeploy(tag)
     }
 
 
     async function createTagsForDeploy(tagSBX, buildMessage) {
-         let nextTag = ''
+        let nextTag = ''
         if (!tagSBX) {
             nextTag = await computeNextTagName();
             console.log(`🏷️  Create tag ${nextTag} on ${DEPLOY_BRANCH}`);
@@ -259,7 +285,8 @@ function main(config) {
                 ).toLowerCase();
                 const isMergeByTitle = title.startsWith('merge ')
                     || title.includes('merge branch')
-                    || title.includes('merge remote-tracking branch');
+                    || title.includes('merge remote-tracking branch')
+                    || title.includes('Changelogs SBX');
                 const isMergeByParents = Array.isArray(commit.parent_ids)
                     && commit.parent_ids.length > 1;
                 return !(isMergeByTitle || isMergeByParents);
@@ -291,12 +318,12 @@ function main(config) {
 
                 commitChanges.push(
                     {
-                        index, 
-                        shortSha, 
-                        date: moment(new Date(commit.created_at || commit.committed_date)).format('DD/MM/YYYY'), 
-                        dateTime: moment(new Date(commit.created_at || commit.committed_date)).format('DD/MM/YYYY HH:mm'), 
-                        author, 
-                        title, 
+                        index,
+                        shortSha,
+                        date: moment(new Date(commit.created_at || commit.committed_date)).format('DD/MM/YYYY'),
+                        dateTime: moment(new Date(commit.created_at || commit.committed_date)).format('DD/MM/YYYY HH:mm'),
+                        author,
+                        title,
                         messages,
 
                     }
@@ -317,7 +344,61 @@ function main(config) {
     }
 
 
-    function getChangeLogsMessage(groupBy, commitChanges = []) {
+    function getMarkdownChangelog(commits) {
+        /**
+  * Build changelog Markdown group theo ngày
+  * @param {Array<{index:number, shortSha:string, date:string, dateTime:string, author:string, title:string, messages:string[]}>} commits
+  * @returns {string}
+  */
+        if (!Array.isArray(commits) || commits.length === 0) {
+            return "## 📝 Changelog\n\n_No commits found_";
+        }
+
+        // Gom commit theo ngày, giữ nguyên thứ tự xuất hiện
+        const grouped = {};
+        for (const c of commits) {
+            if (!grouped[c.date]) grouped[c.date] = [];
+            grouped[c.date].push(c);
+        }
+
+        let md = "## 📝 Changelog\n\n";
+        for (const date of Object.keys(grouped)) {
+            md += `### 📅 ${date}\n`;
+            for (const c of grouped[date]) {
+                md += `#### [${c.shortSha}] [${c.author}]: ${c.title}\n`;
+                if (c.messages && c.messages.length > 1) {
+                    for (let i = 1; i < c.messages.length; i++) {
+                        md += ` ${c.messages[i]}\n`;
+                    }
+
+                } else {
+                    md += '\n'
+                }
+                
+            }
+            // md += "\n";
+        }
+
+        return md.trim();
+
+    }
+
+    function getChangeLogsMessage(groupBy, commitChanges = [], markdown = true) {
+
+        if(!groupBy) {
+            return commitChanges.map(commit => 
+                {
+                    let mess = `✍️ [${commit.shortSha}] 👳 ${commit.author} - ⏰ (${commit.dateTime})\n`
+                    commit.messages.forEach((item, index) => {
+                        mess += `   ✔️ ${item.trim().startsWith('-') ? item.replace('-', '').trim() : `${item}`}\n`;
+
+                    });
+                    // mess += '________________________________________\n'
+                    return mess
+                }
+            ).join('\n')
+        }
+
         const messageGroup = _.groupBy(commitChanges, groupBy);
         const mess = [];
         for (const [groupName, commits] of Object.entries(messageGroup)) {
@@ -325,8 +406,7 @@ function main(config) {
             authorMess.push(`\n ✾✾✾✾✾✾✾✾ 👉${groupName}👈 ✾✾✾✾✾✾✾✾`);
             commits.forEach((commit, index) => {
                 // authorMess.push('--------------------------------------------------------');
-                authorMess.push(`👉 CommitID: [${commit.shortSha}]`)
-                authorMess.push(`👳 Author: ${commit.author} - ⏰ (${commit.dateTime})`) ;
+                authorMess.push(`👉 [${commit.shortSha}] - 👳 ${commit.author} - ⏰ (${commit.dateTime}) `)
                 authorMess.push('✍️  Changelogs:');
                 commit.messages.forEach((item, index) => {
                     authorMess.push(`    ✔️  ${item.trim().startsWith('-') ? item.replace('-', '').trim() : `${item}`}`);
@@ -341,6 +421,8 @@ function main(config) {
 
     // ===== MAIN =====
     return {
+        createMR,
+        getMarkdownChangelog,
         ensureTargetIsMain,
         mergeIntoMain,
         syncMainToDeployAndTag,
