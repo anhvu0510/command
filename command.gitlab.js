@@ -86,7 +86,7 @@ function parseArgs(arr) {
 
 
         if (command['--build']) {
-            const result = await getChanges(config.MAIN_BRANCH, config.DEPLOY_BRANCH);
+            const result = await commandHandler.getChanges(config.MAIN_BRANCH, config.DEPLOY_BRANCH);
             if (result.commitChanges.length !== 0) {
                 const tagBuildSbx = command['--tags']?.shift() ?? null;
                 const changeLogs = commandHandler.getChangeLogsMessage('date', result.commitChanges)
