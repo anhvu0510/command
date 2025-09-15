@@ -226,9 +226,31 @@ function main(config) {
 
         if ((DO_TAG || '').toLowerCase() !== 'true') {
             console.log('🏷️  Skip tagging (DO_TAG=false).');
-            return;
+            // Build and show merge commit URL even if tagging skipped
+            const commitUrl = buildMergeCommitUrl(merged.data);
+            if (commitUrl) console.log('🔗 Merge commit URL:', commitUrl);
+            return commitUrl;
         }
         await createTagsForDeploy(tag)
+        const gitUrl = buildMergeCommitUrl(merged.data);
+        console.log('Deploy Succeeded::: ', gitUrl || '(commit URL unavailable)')
+        return gitUrl;
+    }
+
+    // Build a web URL to the merge commit created by the deploy MR.
+    // Prefer using the MR web_url returned by GitLab and replace the tail with the commit path.
+    function buildMergeCommitUrl(mergeData) {
+        try {
+            if (!mergeData) return '';
+            const sha = mergeData.merge_commit_sha || mergeData.sha; // possible fields
+            const mrUrl = mergeData.web_url; // e.g. https://gitlab.com/group/project/-/merge_requests/123
+            if (!sha || !mrUrl) return '';
+            // Replace /-/merge_requests/<iid>[...optional suffix] with /-/commit/<sha>
+            const url = mrUrl.replace(/\/\-\/merge_requests\/\d+.*$/, `/-/commit/${sha}`);
+            return url;
+        } catch (_) {
+            return '';
+        }
     }
 
 
