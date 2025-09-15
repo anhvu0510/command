@@ -76,18 +76,19 @@ function parseArgs(arr) {
 
 
         if (command['--merge-create'] && mergeCR.length !== 0) {
-            for (const [source, destination] of mergeCR) {
+            for (const [source, destination, autoMerge] of mergeCR) {
                 try {
                     const result = await commandHandler.getChanges(source, destination);
-
-                    console.log(JSON.stringify(result.commitChanges))
-
-                    const changeLogs = commandHandler.getMarkdownChangelog(result.commitChanges)
-                    console.log(`Create MR from ${source} to ${destination} with changelogs::: \n${changeLogs}`);
-                    const title = `Merge branch ${source} into ${destination}: `
-                    const createMR = await commandHandler.createMR(source, destination,changeLogs, title , false)
-                    console.log('MR IID', createMR);
-                    mrIds.push(createMR)
+                    if (result?.commitChanges?.length !== 0) {
+                        const changeLogs = commandHandler.getMarkdownChangelog(result.commitChanges)
+                        console.log(`Create MR from ${source} to ${destination} with changelogs::: \n${changeLogs}`);
+                        const title = `Merge branch ${source} into ${destination}: `
+                        const createMR = await commandHandler.createMR(source, destination, changeLogs, title, autoMerge !== 'false')
+                        console.log('MR IID', createMR);
+                        mrIds.push(createMR)
+                    }else {
+                        console.log(`Nothing changes from ${source} to ${destination}`)
+                    }
                 } catch (error) {
                     console.error(error);
 
@@ -96,7 +97,7 @@ function parseArgs(arr) {
         }
 
 
-        if ( command['--merge'] && mrIds.length !== 0) {
+        if (command['--merge'] && mrIds.length !== 0) {
             for (const mergeId of mrIds) {
                 try {
                     console.log(`🔧[Merge to ${config.MAIN_BRANCH}] Host=${config.HOST} PID=${config.PID} Merge RequestID: ${mergeId}`);
@@ -113,11 +114,11 @@ function parseArgs(arr) {
 
         if (command['--build']) {
             let [mainBranch, deployBranch] = buildBranch[0];
-            if(!mainBranch) {
+            if (!mainBranch) {
                 mainBranch = config.MAIN_BRANCH;
             }
 
-            if(!deployBranch) {
+            if (!deployBranch) {
                 deployBranch = config.DEPLOY_BRANCH;
             }
 

@@ -11,7 +11,7 @@ function main(config) {
     const { HOST, PID, TOK, MAIN_BRANCH, DEPLOY_BRANCH, POLL_RETRIES = '20', POLL_DELAY_MS = '2000', DO_TAG = 'true' } = config
 
     if (!PID || !TOK) {
-        console.error('❌ Thiếu biến môi trường hoặc tham số.\n'
+        console.log('❌ Thiếu biến môi trường hoặc tham số.\n'
             + 'Cần: PID, TOK, (tùy) HOST, DEPLOY_BRANCH; và tham số CLI: MR_IID\n'
             + 'Ví dụ: node buildSBX.js 226');
         process.exit(1);
@@ -35,11 +35,11 @@ function main(config) {
         (err) => {
             if (err.response) {
                 const { status, data, config } = err.response;
-                console.error(`HTTP ${status} ${config?.method?.toUpperCase()} ${config?.url}`);
-                if (typeof data === 'string') console.error(data.slice(0, 2000));
-                else console.error(JSON.stringify(data, null, 2));
+                console.log(`HTTP ${status} ${config?.method?.toUpperCase()} ${config?.url}`);
+                if (typeof data === 'string') console.log(data.slice(0, 2000));
+                else console.log(JSON.stringify(data, null, 2));
             } else {
-                console.error('HTTP ERROR:', err.message);
+                console.log('HTTP ERROR:', err.message);
             }
             return Promise.reject(err);
         }
@@ -361,8 +361,8 @@ function main(config) {
                 totalFiles: (data.diffs || []).length
             };
         } catch (error) {
-            console.error(`❌ Error getting incoming changes: ${error.message}`);
-            throw error;
+            console.log(`❌ Error getting incoming changes: ${error.message}`);
+            // throw error;
         }
     }
 
@@ -474,7 +474,7 @@ function main(config) {
                 all.push(...res.data);
                 if (res.data.length < perPage) break; // last page
             } catch (err) {
-                console.error('❌ getAllProjects error:', err.message);
+                console.log('❌ getAllProjects error:', err.message);
                 break;
             }
         }
