@@ -57,6 +57,7 @@ function parseArgs(arr) {
         const diffs = command['--diff'] ?? [];
         const mergeCR = command['--merge-create'] ?? [];
         const mrIds = command['--merge'] ?? []
+        const buildBranch = command['--build'] ?? []
 
 
         if (diffs.length !== 0) {
@@ -111,7 +112,16 @@ function parseArgs(arr) {
 
 
         if (command['--build']) {
-            const result = await commandHandler.getChanges(config.MAIN_BRANCH, config.DEPLOY_BRANCH);
+            let [mainBranch, deployBranch] = buildBranch[0];
+            if(!mainBranch) {
+                mainBranch = config.MAIN_BRANCH;
+            }
+
+            if(!deployBranch) {
+                deployBranch = config.DEPLOY_BRANCH;
+            }
+
+            const result = await commandHandler.getChanges(mainBranch, deployBranch);
             if (result.commitChanges.length !== 0) {
                 const tagBuildSbx = command['--tags']?.shift() ?? null;
                 const changeLogs = commandHandler.getChangeLogsMessage(null, result.commitChanges)
