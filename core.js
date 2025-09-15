@@ -64,6 +64,7 @@ function main(config) {
     }
 
     // ===== GitLab API wrappers =====
+
     const getMR = (iid) => http('get', `merge_requests/${iid}`);
     const updateMR = (iid, payload) => http('put', `merge_requests/${iid}`, { json: payload });
     const mergeMR = (iid, { whenPipelineSucceeds = false, merge_commit_message } = {}) => http('post', `merge_requests/${iid}/merge`, {
@@ -441,6 +442,49 @@ function main(config) {
         return mess.join('\n');
     }
 
+    /**
+     * List all projects accessible by the token.
+     * Auto handles pagination until no more pages.
+     * @param {Object} opt
+     * @param {number} [opt.perPage=100] - Items per page (max 100 per GitLab docs)
+     * @param {number} [opt.maxPages=50] - Safety cap to prevent infinite loops
+     * @param {string} [opt.search] - Optional search string
+     * @returns {Promise<Array>} All project objects
+     */
+    async function getAllProjects({ perPage = 100, maxPages = 50, search } = {}) {
+        // Use a root-level client because current api instance is scoped to a project id
+        const root = axios.create({
+            baseURL: `${HOST.replace(/\/+$/, '')}/api/v4`,
+            timeout: 60_000,
+            headers: { 'PRIVATE-TOKEN': TOK }
+        });
+
+        const all = [];
+        for (let page = 1; page <= maxPages; page++) {
+            const params = new URLSearchParams();
+            params.set('per_page', String(perPage));
+            params.set('page', String(page));
+            // Order by last_activity to surface active projects first
+            params.set('order_by', 'last_activity_at');
+            params.set('sort', 'desc');
+            if (search) params.set('search', search);
+            try {
+                const res = await root.get(`/projects?${params.toString()}`);
+                if (res.status !== 200 || !Array.isArray(res.data)) break;
+                all.push(...res.data);
+                if (res.data.length < perPage) break; // last page
+            } catch (err) {
+                console.error('❌ getAllProjects error:', err.message);
+                break;
+            }
+        }
+        return all.map(item => ({ PID: item.id, projectName: item.name, mainBranch: item.default_branch, deployBranch: '' }));
+    }
+    // Usage example (outside):
+    // const { getAllProjects } = core(config); (remember config.PID must be any accessible project just for initialization)
+    // const projects = await getAllProjects({ search: 'gate' });
+    // console.log(projects.map(p => `${p.id}: ${p.path_with_namespace}`));
+
     // ===== MAIN =====
     return {
         createMR,
@@ -450,7 +494,8 @@ function main(config) {
         syncMainToDeployAndTag,
         getChanges,
         getChangeLogsMessage,
-        createTagsForDeploy
+        createTagsForDeploy,
+        getAllProjects
     }
 }
 
