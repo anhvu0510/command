@@ -40,7 +40,6 @@ function parseArgs(arr) {
         const command = parseArgs(userInput);
         console.log('command', command);
 
-
         const config = {
             HOST: host,
             PID: projectConfig.PID,
@@ -57,7 +56,7 @@ function parseArgs(arr) {
         const diffs = command['--diff'] ?? [];
         const mergeCR = command['--merge-create'] ?? [];
         const mrIds = command['--merge'] ?? []
-        const buildBranch = command['--build'] ?? []
+        const buildBranch = command['--build']
 
 
         if (diffs.length !== 0) {
@@ -113,7 +112,7 @@ function parseArgs(arr) {
 
 
         if (command['--build']) {
-            let [mainBranch, deployBranch] = buildBranch[0];
+            let [mainBranch, deployBranch] = buildBranch.length !== 0 ? buildBranch[0] : [config.MAIN_BRANCH, config.DEPLOY_BRANCH]
             if (!mainBranch) {
                 mainBranch = config.MAIN_BRANCH;
             }

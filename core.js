@@ -135,8 +135,8 @@ function main(config) {
     }
 
     function nextTagFrom(latestTag) {
-        if (!latestTag) return 'v1.0.0____0001';
-        const [ver, seq] = latestTag.split('____');
+        if (!latestTag) throw new Error('Lasted tags not found');
+        const [ver, seq] = latestTag.split('_').filter(Boolean);
         const num = (parseInt(seq, 10) || 0) + 1;
         const padded = String(num).padStart(4, '0');
         return `${ver}____${padded}`;
@@ -495,7 +495,7 @@ function main(config) {
         getChanges,
         getChangeLogsMessage,
         createTagsForDeploy,
-        getAllProjects
+        getAllProjects,
     }
 }
 
