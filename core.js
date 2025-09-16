@@ -432,7 +432,8 @@ function main(config) {
                 authorMess.push(`👉 [${commit.shortSha}] - 👳 ${commit.author} - ⏰ (${commit.dateTime}) `)
                 authorMess.push('✍️  Changelogs:');
                 commit.messages.forEach((item, index) => {
-                    authorMess.push(`    ✔️  ${item.trim().startsWith('-') ? item.replace('-', '').trim() : `${item}`}`);
+                    const mess = item.split('.').join('\n');
+                    authorMess.push(`    ✔️  ${mess.trim().startsWith('-') ? mess.replace('-', '').trim() : `${mess}`}`);
                 });
                 authorMess.push('--------------------------------------------------------');
             });

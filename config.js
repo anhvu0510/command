@@ -1,10 +1,15 @@
 module.exports = {
-    gitToken: '',
     host: 'https://git.payme.net.vn',
     projects: [
         {
             PID: 455,
             projectName: 'gate-core',
+            mainBranch: 'main',
+            deployBranch: 'deploy'
+        },
+        {
+            PID: 447,
+            projectName: 'gate-supplier',
             mainBranch: 'main',
             deployBranch: 'deploy'
         },

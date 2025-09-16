@@ -134,7 +134,7 @@ function parseArgs(arr) {
                     tagsDesc = `Build SBX at: ${moment().format('DD/MM/YYYY HH:mm')}\nChangelogs:\n${tagsDesc.map(item => ` - ${item.trim()}`).join('\n')}`
                 }
 
-                await commandHandler.syncMainToDeployAndTag({ tag: tagBuildSbx, tagsDesc: changeLogs, changelogs: changeLogsMD });
+                await commandHandler.syncMainToDeployAndTag({ tag: tagBuildSbx, tagsDesc: tagsDesc, changelogs: changeLogsMD });
             } else {
                 console.log(`[Error]: Not have commits changes from ${config.MAIN_BRANCH} to ${config.DEPLOY_BRANCH}`)
             }
