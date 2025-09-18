@@ -212,7 +212,7 @@ function main(config) {
     
     async function syncMainToDeployAndTag({ tag, tagsDesc, changelogs }) {
         // Create MR MAIN_BRANCH -> DEPLOY_BRANCH (or reuse)
-        const title = `Changelogs SBX - ${moment(new Date()).format('DD/MM/YYYY HH:mm:ss')}`
+        const title = `Build logs SBX - ${moment(new Date()).format('DD/MM/YYYY HH:mm:ss')}`
         const mrIID = await createMR(MAIN_BRANCH, DEPLOY_BRANCH, changelogs, title)
 
         const status = await pollMergeable(mrIID, RETRIES, DELAY);
@@ -309,7 +309,7 @@ function main(config) {
                 const isMergeByTitle = title.startsWith('merge ')
                     || title.includes('merge branch')
                     || title.includes('merge remote-tracking branch')
-                    || title.includes('Changelogs SBX');
+                    || title.includes('Build logs SBX');
                 const isMergeByParents = Array.isArray(commit.parent_ids)
                     && commit.parent_ids.length > 1;
                 return !(isMergeByTitle || isMergeByParents);

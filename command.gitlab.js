@@ -78,7 +78,8 @@ function parseArgs(arr) {
             for (const [source, destination, autoMerge] of mergeCR) {
                 try {
                     const result = await commandHandler.getChanges(source, destination);
-                    if (result?.commitChanges?.length !== 0) {
+                    const commitChanges = result?.commitChanges ?? [];
+                    if (commitChanges.length !== 0) {
                         const changeLogs = commandHandler.getMarkdownChangelog(result.commitChanges)
                         console.log(`Create MR from ${source} to ${destination} with changelogs::: \n${changeLogs}`);
                         const title = `Merge branch ${source} into ${destination}: `
@@ -122,7 +123,8 @@ function parseArgs(arr) {
             }
 
             const result = await commandHandler.getChanges(mainBranch, deployBranch);
-            if (result.commitChanges.length !== 0) {
+            const changes = result.commitChanges ?? [];
+            if (changes.length !== 0) {
                 const tagBuildSbx = command['--tags']?.shift() ?? null;
                 const changeLogs = commandHandler.getChangeLogsMessage(null, result.commitChanges)
                 const changeLogsMD = commandHandler.getMarkdownChangelog(result.commitChanges)
