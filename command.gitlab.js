@@ -122,6 +122,9 @@ function parseArgs(arr) {
                 deployBranch = config.DEPLOY_BRANCH;
             }
 
+            commandHandler.changeBranch(mainBranch, deployBranch);
+            console.log('Deploy', JSON.stringify({mainBranch, deployBranch}, null, 2))
+
             const result = await commandHandler.getChanges(mainBranch, deployBranch);
             const changes = result.commitChanges ?? [];
             if (changes.length !== 0) {

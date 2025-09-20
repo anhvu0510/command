@@ -8,7 +8,8 @@ const _ = require('lodash')
 const { host, gitToken, projects } = require('./config')
 // ===== ENV =====
 function main(config) {
-    const { HOST, PID, TOK, MAIN_BRANCH, DEPLOY_BRANCH, POLL_RETRIES = '20', POLL_DELAY_MS = '2000', DO_TAG = 'true' } = config
+    const { HOST, PID, TOK, POLL_RETRIES = '20', POLL_DELAY_MS = '2000', DO_TAG = 'true' } = config
+    let { MAIN_BRANCH, DEPLOY_BRANCH } = config;
 
     if (!PID || !TOK) {
         console.log('❌ Thiếu biến môi trường hoặc tham số.\n'
@@ -145,15 +146,17 @@ function main(config) {
     async function computeNextTagName() {
         const names = [];
         for (let page = 1; page <= 3; page++) {
-            const res = await listTags(100, page);
+            if(names.length !== 0) {
+                break;
+            }
+
+            const res = await listTags(10, page);
             if (res.status !== 200 || !Array.isArray(res.data) || res.data.length === 0) break;
             names.push(...res.data.map((t) => t.name));
-            if (res.data.length < 100) break;
+           
         }
-        const valid = names.filter((n) => TAG_REGEX.test(n));
-        if (!valid.length) return nextTagFrom(null);
-        valid.sort(sortVersionThenSeq);
-        return nextTagFrom(valid[valid.length - 1]);
+        
+        return nextTagFrom(names[0]);
     }
 
     // ===== Flow pieces =====
@@ -481,6 +484,12 @@ function main(config) {
         }
         return all.map(item => ({ PID: item.id, projectName: item.name, mainBranch: item.default_branch, deployBranch: '' }));
     }
+
+
+    function changeBranch(mainBranch , deployBranch ) {
+        MAIN_BRANCH = mainBranch ?? config.MAIN_BRANCH;
+        DEPLOY_BRANCH = deployBranch ?? config.DEPLOY_BRANCH;
+    }
     // Usage example (outside):
     // const { getAllProjects } = core(config); (remember config.PID must be any accessible project just for initialization)
     // const projects = await getAllProjects({ search: 'gate' });
@@ -497,6 +506,7 @@ function main(config) {
         getChangeLogsMessage,
         createTagsForDeploy,
         getAllProjects,
+        changeBranch
     }
 }
 
