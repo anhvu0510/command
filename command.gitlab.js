@@ -31,7 +31,7 @@ function parseArgs(arr) {
     try {
 
         const userInput = process.argv.slice(2);
-        const projectName = userInput.pop();
+        const projectName = userInput.shift();
         const projectConfig = projects.find(item => projectName === item.projectName)
         if (!projectConfig) {
             throw new Error(`Project ${projectName} chưa được config`)
